@@ -1,0 +1,19 @@
+{
+  "name": "etl",
+  "version": "1.0.2016.1124",
+  "description": "ouph http receiver",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node install.js"
+  },
+  "author": "tant",
+  "license": "AGPL v3",
+  "dependencies": {
+    "mmdb-reader": "^1.0.1",
+    "moment": "^2.15.0",
+    "mongodb": "^2.2.10",
+    "mysql": "^2.11.1",
+    "ua-parser-js": "^0.7.10"
+  }
+}
