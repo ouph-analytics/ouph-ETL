@@ -16,8 +16,7 @@ var
     os = require('os'),
     moment = require('moment'),
     uaparser = require('ua-parser-js'),
-    MMDBReader = require('mmdb-reader'),
-    sync = require('synchronize');
+    MMDBReader = require('mmdb-reader');
 var queue = require(path.join(__dirname, '/db/' + config.etl.queue + '.js'));
 var db = require(path.join(__dirname, '/db/' + config.etl.db + '.js'));
 var geoip = new MMDBReader('./geoip/GeoLite2-City.mmdb');

@@ -28,7 +28,7 @@ module.exports = {
             var sql = `select @id:=id from web_queue order by id asc limit 1;
 INSERT ignore INTO web_queue_log (qid,\`query\`,ua,ip,visittime,error)  SELECT id,\`query\`,ua,ip,visittime,'-' FROM web_queue where id=@id;
 select * from web_queue where id=@id;
-delete from web_queue where id=@id;`;
+-- delete from web_queue where id=@id;`;
             connection.query(sql, function (err, result) {
                 connection.release();
                 if (err) {
