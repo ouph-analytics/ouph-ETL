@@ -11,7 +11,7 @@ module.exports = {
     init_queue: function (callback) {
         queue_pool = mysql.createPool(config.conn.queue);
         callback();
-        
+
     },
     ondata: null,
     init_db: function (callback) {
@@ -19,74 +19,59 @@ module.exports = {
         callback();
     },
     start: function () {
-        queue_pool.getConnection(function (err, connection) {
+        //select get_lock('etlv1',30);\ SELECT RELEASE_LOCK('etlv1');"
+        var sql = `select @id:=id from web_queue order by id asc limit 1;
+INSERT ignore INTO web_queue_log (qid,\`query\`,ua,ip,visittime,error)  SELECT id,\`query\`,ua,ip,visittime,'-' FROM web_queue where id=@id;
+select * from web_queue where id=@id;
+delete from web_queue where id=@id;`;
+        queue_pool.query(sql, function (err, result) {
             if (err) {
                 console.log(err);
                 return;
             }
-            //select get_lock('etlv1',30);\ SELECT RELEASE_LOCK('etlv1');"
-            var sql = `select @id:=id from web_queue order by id asc limit 1;
-INSERT ignore INTO web_queue_log (qid,\`query\`,ua,ip,visittime,error)  SELECT id,\`query\`,ua,ip,visittime,'-' FROM web_queue where id=@id;
-select * from web_queue where id=@id;
--- delete from web_queue where id=@id;`;
-            connection.query(sql, function (err, result) {
-                connection.release();
-                if (err) {
-                    console.log(err);
-                    return;
-                }
 
-                var raw = result[2];
-                if (raw && raw.length) {
+            var raw = result[2];
+            if (raw && raw.length) {
+                process.nextTick(module.exports.start);
+                var json = JSON.parse(raw[0].query);
+                json.__id = raw[0].id;
+                json.ip = raw[0].ip;
+                json.ua = raw[0].ua;
+                json.visittime = raw[0].visittime;
+                module.exports.ondata(json);
+
+            } else {
+                console.log(moment() + " sleep");
+                setTimeout(function () {
                     process.nextTick(module.exports.start);
-                    var json = JSON.parse(raw[0].query);
-                    json.__id = raw[0].id;
-                    json.ip = raw[0].ip;
-                    json.ua = raw[0].ua;
-                    json.visittime = raw[0].visittime;
-                    module.exports.ondata(json);
-
-                } else {
-                    console.log(moment() + " sleep");
-                    setTimeout(function () {
-                        process.nextTick(module.exports.start);
-                    }, 10000);
-                }
+                }, 10000);
+            }
 
 
-            });
         });
+
     },
 
     save: function (data) {
-        db_pool.getConnection(function (err, connection) {
+        var table = data.t;
+        delete data.t;
+        if ('pageview' == table) {
+            table = "web_pageview";
+        } else if ('event' == table) {
+            table = "web_event";
+        } else {
+            return;
+        }
+        data.ts = moment.utc().format('YYYY-MM-DD HH:mm:ss');
+        var sql = 'insert ignore into ' + table + ' set ?';
+        db_pool.query(sql, data, function (err, result) {
             if (err) {
                 console.log(err);
                 return;
             }
-            var table = data.t;
-            delete data.t;
-            if ('pageview' == table) {
-                table = "web_pageview";
-            } else if ('event' == table) {
-                table = "web_event";
-            } else {
-                return;
-            }
-            data.ts = moment.utc().format('YYYY-MM-DD HH:mm:ss');
-            var sql = 'insert ignore into ' + table + ' set ?';
-            connection.query(sql, data, function (err, result) {
-                connection.release();
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-
-            });
-
-
 
         });
+
     },
     error: function (data, error) {
         if (error.length > 10) {
@@ -94,19 +79,14 @@ select * from web_queue where id=@id;
         }
         if (data.__id) {
             var sql = "update web_queue_log set error=? where qid=?";
-            db_pool.getConnection(function (err, connection) {
+            db_pool.query(sql, [error, data.__id], function (err, result) {
+
                 if (err) {
                     console.log(err);
                     return;
                 }
-                connection.query(sql, [error, data.__id], function (err, result) {
-                    connection.release();
-                    if (err) {
-                        console.log(err);
-                        return;
-                    }
-                });
             });
+
 
         }
 
@@ -267,16 +247,15 @@ ENGINE=InnoDB\
 ;\
 ");
 
-        db_pool.getConnection(function (err, connection) {
-            connection.query(sql.join("\r\n"), function (err, result) {
-                if (err) {
-                    console.log(err);
-                } else {
-                    console.log(result);
-                }
-                callback();
-            });
+        db_pool.query(sql.join("\r\n"), function (err, result) {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log(result);
+            }
+            callback();
         });
+
 
     }
 
