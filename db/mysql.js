@@ -21,12 +21,12 @@ module.exports = {
     start: function () {
         //select get_lock('etlv1',30);\ SELECT RELEASE_LOCK('etlv1');"
         var m_date=moment();
-        var __id=m_date.toString("x");
+        var __id=m_date.format("x");
         var sql = `select @id:=id from web_queue order by id asc limit 1;
-INSERT ignore INTO web_queue_log (qid,\`query\`,ua,ip,visittime,error)  SELECT concat(id,'-',${__id}),\`query\`,ua,ip,visittime,'-' FROM web_queue where id=@id;
+INSERT ignore INTO web_queue_log (qid,\`query\`,ua,ip,visittime,error)  SELECT concat(id,'-',?),\`query\`,ua,ip,visittime,'-' FROM web_queue where id=@id;
 select * from web_queue where id=@id;
 delete from web_queue where id=@id;`;
-        queue_pool.query(sql, function (err, result) {
+        queue_pool.query(sql,[__id], function (err, result) {
             if (err) {
                 console.log(err);
                 return;
